@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Planetora</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet" />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background: #fff;
+      overflow: hidden; /* from arena.html */
+      user-select: none;
+    }
+
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      padding: 0;
+      background: #fff;
+    }
+
+    .title {
+      padding: 0 20px;
+      font-size: 40px;
+      font-weight: bold;
+      color: black;
+      user-select: none;
+    }
+
+    .title a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .button-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 5px;
+      background: #fff;
+    }
+
+    .common-btn {
+      padding: 7px;
+      font-size: 20px;
+      height: 40px;
+      border: 2px solid #d3d3d3;
+      border-radius: 15px;
+      background: #fff;
+      color: #696969;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      outline: none;
+      flex-shrink: 1;
+      user-select: none;
+    }
+
+    .common-btn:hover {
+      border-color: #696969;
+      background: #696969;
+      color: #fff;
+    }
+
+    .common-btn:active,
+    .common-btn.clicked {
+      border-color: black;
+      background: black;
+      color: #fff;
+    }
+
+    .tooltip-container {
+      position: relative;
+      display: inline-block;
+    }
+
+    .tooltip-text {
+      visibility: hidden;
+      background: black;
+      color: white;
+      border-radius: 10px;
+      padding: 8px;
+      position: absolute;
+      top: 45px;
+      left: 0;
+      box-shadow: 0 8px 16px rgba(2, 2, 2, 0.2);
+      opacity: 0;
+      font-size: 14px;
+      max-width: 250px;
+      word-wrap: break-word;
+      transition: opacity 0.5s ease, visibility 0s linear 0.5s; 
+      pointer-events: none;
+      line-height: 1.3;
+      z-index: 9999;
+    }
+
+    .tooltip-container:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+      transition-delay: 0.5s;
+    }
+
+    #content {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      height: calc(100vh - 50px);
+    }
+
+    #canvas-container {
+      flex: 1 1 auto;
+      min-width: 300px;
+      position: relative;
+    }
+
+    #canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background-color: white;
+      cursor: default;
+    }
+
+    #adSpace {
+      width: 300px;
+      min-width: 300px;
+      max-width: 300px;
+      background: Whitesmoke;
+      flex: 0 0 300px;
+    }
+
+    @media (max-width: 700px) {
+      #content {
+        flex-direction: column;
+      }
+      #adSpace {
+        order: 1;
+        width: 100%;
+        min-width: auto;
+        max-width: none;
+      }
+      #canvas-container {
+        order: 2;
+        width: 100%;
+        min-width: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="title">
+      <a id="title-link" href="index.html">Planetora</a>
+    </div>
+
+    <nav class="button-container">
+      <div class="tooltip-container">
+        <button id="btnback" class="common-btn">Back</button>
+        <span class="tooltip-text">Go back to room selection page</span>
+      </div>
+
+
+   
+    </nav>
+
+    <ul id="selectedRoomsList" style="display: none;"></ul>
+  </header>
+
+  <div id="content">
+    <div id="canvas-container">
+      <canvas id="canvas"></canvas>
+    </div>
+    <div id="adSpace"></div>
+  </div>
+
+  <script>
+    // Existing page3 logic
+    var roomcount = 0;
+    document.addEventListener('DOMContentLoaded', async () => {
+      const stored = localStorage.getItem('selectedRooms');
+      if (!stored) return;
+
+      const selectedRooms = JSON.parse(stored);
+
+      // Call your Render backend
+      const response = await fetch('https://planetorabackend.onrender.com/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rooms: selectedRooms })
+      });
+
+      const result = await response.json();
+      boxes = result.boxes;  // boxes array is already declared globally in page3.html
+
+      zoomToFit();
+      draw();
+    });
+
+
+
+
+
+    const btnback = document.getElementById('btnback');
+    btnback.addEventListener('click', (event) => {
+      if (!confirm('Are you sure you want to leave the interface and go to the room selection page?')) {
+        event.preventDefault();
+      } else {
+        window.location.href = 'page2.html';
+      }
+    });
+
+    document.getElementById('title-link').addEventListener('click', (event) => {
+      if (!confirm('Are you sure you want to leave the interface and go to the start page?')) {
+        event.preventDefault();
+      }
+    });
+  
+
+  <!-- Arena.js logic -->
+ 
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = window.innerWidth - 300; // Adjust for adSpace
+    canvas.height = window.innerHeight - 50; // Adjust for header
+
+    const GRID_SIZE = 40;
+    let scaleFactor = 1;
+    let cameraOffset = { x: 0, y: 0 };
+
+    let boxes = [];
+    let selected = null;
+    let dragging = false;
+    let resizing = false;
+    let panning = false;
+    let dragOffset = { x: 0, y: 0 };
+    let panStart = { x: 0, y: 0 };
+    let activeHandle = null;
+    let handles = [];
+    let selectionBox = null;
+
+
+    function snapToGrid(value) {
+      return Math.round(value / GRID_SIZE) * GRID_SIZE;
+    }
+
+    function updateHandles() {
+      handles = [
+        { x: selected.x + selected.width / 2, y: selected.y + (7.5 / scaleFactor), cursor: "ns-resize", side: "top" },
+        { x: selected.x + selected.width / 2, y: selected.y + selected.height - (7.5 / scaleFactor), cursor: "ns-resize", side: "bottom" },
+        { x: selected.x + (7.5 / scaleFactor), y: selected.y + selected.height / 2, cursor: "ew-resize", side: "left" },
+        { x: selected.x + selected.width - (7.5 / scaleFactor), y: selected.y + selected.height / 2, cursor: "ew-resize", side: "right" }
+      ];
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.setTransform(scaleFactor, 0, 0, scaleFactor, cameraOffset.x, cameraOffset.y);
+
+      boxes.forEach(box => {
+        ctx.fillStyle = "black";
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 20;
+        ctx.fillRect(box.x, box.y, box.width, box.height);
+        ctx.strokeRect(box.x, box.y, box.width, box.height);
+      });
+
+      boxes.forEach(box => {
+        ctx.fillStyle = box.color;
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 10;
+        ctx.fillRect(box.x, box.y, box.width, box.height);
+        ctx.strokeRect(box.x, box.y, box.width, box.height);
+
+        ctx.fillStyle = "black";
+        ctx.font = `${30}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(box.name, box.x + box.width / 2, box.y - 20 + box.height / 2);
+        ctx.font = `${20}px Arial`;
+        const sizeText = `${box.width / GRID_SIZE}' x ${box.height / GRID_SIZE}'`;
+        ctx.fillText(sizeText, box.x + box.width / 2, box.y + 15 + box.height / 2);
+
+
+      });
+
+      drawGrid();
+
+      if (selected) {
+        updateHandles();
+        ctx.fillStyle = "rgba(230, 230, 230, 1)";
+        handles.forEach(h => {
+          ctx.beginPath();
+          ctx.lineWidth = 1 / scaleFactor;
+          ctx.arc(h.x, h.y, 15 / scaleFactor, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(150, 150, 150, 1)';
+          ctx.stroke();
+        });
+      }
+      ctx.restore();
+
+    }
+
+    function drawGrid() {
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.lineWidth = 1;
+      const startX = Math.floor(-cameraOffset.x / scaleFactor / GRID_SIZE) * GRID_SIZE;
+      const endX = startX + canvas.width / scaleFactor + GRID_SIZE;
+      const startY = Math.floor(-cameraOffset.y / scaleFactor / GRID_SIZE) * GRID_SIZE;
+      const endY = startY + canvas.height / scaleFactor + GRID_SIZE;
+      for (let x = startX; x < endX; x += GRID_SIZE) {
+        ctx.beginPath();
+        ctx.moveTo(x, startY);
+        ctx.lineTo(x, endY);
+        ctx.stroke();
+      }
+      for (let y = startY; y < endY; y += GRID_SIZE) {
+        ctx.beginPath();
+        ctx.moveTo(startX, y);
+        ctx.lineTo(endX, y);
+        ctx.stroke();
+      }
+    }
+
+    function getMousePos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (evt.clientX - rect.left - cameraOffset.x) / scaleFactor;
+      const y = (evt.clientY - rect.top - cameraOffset.y) / scaleFactor;
+      return { x, y };
+    }
+
+    function getSelectedBox(mx, my) {
+      return boxes.find(box => mx >= box.x - 10 && mx <= box.x + box.width + 10 &&
+                                my >= box.y - 10 && my <= box.y + box.height + 10);
+    }
+
+
+    canvas.addEventListener("mousedown", (e) => {
+      if (e.button === 1) {
+        panning = true;
+        panStart.x = e.clientX - cameraOffset.x;
+        panStart.y = e.clientY - cameraOffset.y;
+        canvas.style.cursor = "grab";
+        return;
+      }
+      const { x: mx, y: my } = getMousePos(e);
+      boxes.forEach(box => box.color = "rgba(230, 230, 230, 1)");
+      selected = getSelectedBox(mx, my);
+      if (selected) {
+        selected.color = "rgba(200, 150, 150, 1)";
+        dragOffset.x = mx - selected.x;
+        dragOffset.y = my - selected.y;
+        dragging = true;
+        activeHandle = handles.find(h => Math.hypot(h.x - mx, h.y - my) < 15 / scaleFactor);
+        if (activeHandle) {
+          resizing = true;
+          dragging = false;
+          canvas.style.cursor = activeHandle.cursor;
+        }
+      } else {
+        selected = null;
+        dragging = false;
+        resizing = false;
+        canvas.style.cursor = "default";
+        selectionBox = { startX: mx, startY: my, x: mx, y: my, width: 0, height: 0 };
+      }
+      draw();
+    });
+
+    canvas.addEventListener("mousemove", (e) => {
+      if (panning) {
+        cameraOffset.x = e.clientX - panStart.x;
+        cameraOffset.y = e.clientY - panStart.y;
+        draw();
+        return;
+      }
+      const { x: mx, y: my } = getMousePos(e);
+      if (dragging && selected) {
+        selected.x = snapToGrid(mx - dragOffset.x);
+        selected.y = snapToGrid(my - dragOffset.y);
+      }
+      if (resizing && activeHandle && selected) {
+        if (activeHandle.side === "top") {
+          let newY = snapToGrid(my);
+          let newHeight = selected.y + selected.height - newY;
+          if (newHeight >= GRID_SIZE) {
+            selected.y = newY;
+            selected.height = newHeight;
+          }
+        } else if (activeHandle.side === "bottom") {
+          let newHeight = snapToGrid(my - selected.y);
+          if (newHeight >= GRID_SIZE) selected.height = newHeight;
+        } else if (activeHandle.side === "left") {
+          let newX = snapToGrid(mx);
+          let newWidth = selected.x + selected.width - newX;
+          if (newWidth >= GRID_SIZE) {
+            selected.x = newX;
+            selected.width = newWidth;
+          }
+        } else if (activeHandle.side === "right") {
+          let newWidth = snapToGrid(mx - selected.x);
+          if (newWidth >= GRID_SIZE) selected.width = newWidth;
+        }
+      }
+      if (selectionBox) {
+        const startX = selectionBox.startX;
+        const startY = selectionBox.startY;
+        let x = Math.min(startX, mx);
+        let y = Math.min(startY, my);
+        let width = Math.abs(mx - startX);
+        let height = Math.abs(my - startY);
+        x = Math.floor(x / GRID_SIZE) * GRID_SIZE;
+        y = Math.floor(y / GRID_SIZE) * GRID_SIZE;
+        width = Math.ceil((width + (Math.min(startX, mx) - x)) / GRID_SIZE) * GRID_SIZE;
+        height = Math.ceil((height + (Math.min(startY, my) - y)) / GRID_SIZE) * GRID_SIZE;
+        selectionBox.x = x;
+        selectionBox.y = y;
+        selectionBox.width = width;
+        selectionBox.height = height;
+      }
+      draw();
+    });
+
+    canvas.addEventListener("mouseup", (e) => {
+      if (e.button === 1) {
+        panning = false;
+        canvas.style.cursor = "default";
+        return;
+      }
+      dragging = false;
+      resizing = false;
+      activeHandle = null;
+      selectionBox = null;
+      canvas.style.cursor = "default";
+    });
+
+    canvas.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const zoom = e.deltaY < 0 ? 1.1 : 0.9;
+      const { x: worldX, y: worldY } = getMousePos(e);
+      scaleFactor = Math.max(0.1, Math.min(10, scaleFactor * zoom));
+      const rect = canvas.getBoundingClientRect();
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+      cameraOffset.x = screenX - worldX * scaleFactor;
+      cameraOffset.y = screenY - worldY * scaleFactor;
+      draw();
+    });
+
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth - 300;
+      canvas.height = window.innerHeight - 50;
+      draw();
+    });
+
+    document.getElementById("zoomtofitbutton").addEventListener("click", zoomToFit);
+
+    zoomToFit();
+    draw();
+  </script>
+
+</body>
+</html>

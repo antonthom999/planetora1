@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Planetora</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet" />
+
+  <style>
+
+body, html { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; background: white; }
+.header { display: flex; flex-wrap: wrap; align-items: flex-start; background: #fff; }
+.title { flex: 1 1 100%; padding: 0 20px; font-size: 40px; font-weight: bold; color: black; text-align: left; }
+.subtitle { width: 100%; text-align: center; font-size: 20px; color: #6e6e6e; margin: 30px 0; padding: 0 40px; user-select: none; }
+.card-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; padding: 20px; }
+.card { flex: 1 1 250px; max-width: 300px; min-width: 200px; padding: 7px; font-size: 20px; border: 2px solid #F0F0F0; border-radius: 15px; background: white; color: #696969; transition: all 1s ease; user-select: none; }
+.card:hover { border-color: white; color: black; box-shadow: 0 10px 50px rgba(0, 0, 0, 0.4); }
+.card-number { font-size: 24px; font-weight: bold; color: #6e6e6e; margin-bottom: 10px; }
+.card-image { width: 100px; height: 100px; display: block; margin: 0 auto 10px; }
+.card-text { font-size: 16px; color: #555; text-align: center; }
+.post-card-content { text-align: center; font-size: 20px; color: #6e6e6e; margin-top: 30px; user-select: none; padding: 0 40px; }
+.button-container { display: flex; justify-content: center; padding: 5px; background: #fff; }
+button.common-btn { padding: 27px; font-size: 20px; border: 2px solid #D3D3D3; border-radius: 15px; background: white; color: #696969; cursor: pointer; transition: all 1s ease; user-select: none; }
+button.common-btn:hover { border-color: white; color: black; box-shadow: 0 10px 50px rgba(0, 0, 0, 0.4); }
+button.common-btn:active { border-color: black; background: black; color: white; transition: all 0.1s ease; }
+button.common-btn.clicked { background: black; border-color: black; color: white; }
+.room-btn, .sroom-btn { text-align: left; padding: 8px 12px; width: auto; flex: 0 0 auto; }
+
+
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="title">Planetora</div>
+    <div class="subtitle">
+      We are excited to launch the <span style="color: black;">Planetora</span>, a website that generates floor plans for you. 
+    </div>
+  </div>
+
+
+  <div class="post-card-content">
+    <p>
+      The <span style="color: black;">Planetora</span> will generate instant floor plans. Like all generated content, it is not perfect. Watch out for rooms without windows! You can always edit after generating the plan. Room proximities are predefined. <span style="color: black;">Planetora</span> is totally free—you can generate as many plans as you want.
+    </p>
+  </div>
+
+  <div class="button-container">
+    <button id="btn1" class="common-btn">Start using Planetora</button>
+  </div>
+
+  <div class="post-card-content">
+    <p><span style="color: #D3D3D3;">Version 0.01</span></p>
+  </div>
+
+  <script>
+    const btn1 = document.getElementById('btn1');
+    btn1.addEventListener('click', () => {
+      btn1.classList.add('clicked');
+      setTimeout(() => {
+        window.location.href = 'page2.html';
+      }, 200);
+    });
+  </script>
+
+</body>
+</html>
